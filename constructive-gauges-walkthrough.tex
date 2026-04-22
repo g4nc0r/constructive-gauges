@@ -1,0 +1,400 @@
+\documentclass[11pt,a4paper]{article}
+
+% Fonts
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmainfont{texgyrepagella}[
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic,
+]
+\setmathfont{texgyrepagella-math.otf}
+\frenchspacing
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsthm}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{ragged2e}
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\usepackage{enumitem}
+\usepackage{parskip}
+\emergencystretch=3em
+\usepackage{microtype}
+\usepackage{xcolor}
+
+\definecolor{ikey}{RGB}{30,90,160}      % blue for key formulas
+\definecolor{ibox}{RGB}{250,248,240}    % warm off-white for intuition boxes
+\definecolor{ibar}{RGB}{200,170,90}     % warm ochre rule for intuition
+\definecolor{rbox}{RGB}{238,246,252}    % cool off-white for result boxes
+\definecolor{rbar}{RGB}{100,140,180}    % cool blue rule for results
+\definecolor{ebox}{RGB}{245,243,238}    % neutral off-white for example boxes
+\definecolor{ebar}{RGB}{140,140,140}    % grey rule for examples
+\definecolor{grule}{RGB}{200,200,200}   % light grey rule
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  allcolors=ikey,
+  pdfauthor={K.R. Ryan},
+  pdftitle={Constructive Gauges -- Walkthrough}
+}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape K.R.\ Ryan}
+\fancyhead[R]{\small\itshape Constructive Gauges (walkthrough)}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}\fancyfoot[C]{\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+
+\usepackage{mdframed}
+
+% Intuition box (warm ochre accent)
+\newmdenv[
+  topline=false,
+  bottomline=false,
+  rightline=false,
+  linecolor=ibar,
+  linewidth=3pt,
+  backgroundcolor=ibox,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  innerleftmargin=12pt,
+  innerrightmargin=10pt,
+  skipabove=8pt,
+  skipbelow=8pt,
+]{intuition}
+
+% Result box (cool blue accent) for the headline claim of each result
+\newmdenv[
+  topline=false,
+  bottomline=false,
+  rightline=false,
+  linecolor=rbar,
+  linewidth=3pt,
+  backgroundcolor=rbox,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  innerleftmargin=12pt,
+  innerrightmargin=10pt,
+  skipabove=8pt,
+  skipbelow=8pt,
+]{result}
+
+% Example box (grey accent) for worked numerical examples
+\newmdenv[
+  topline=false,
+  bottomline=false,
+  rightline=false,
+  linecolor=ebar,
+  linewidth=3pt,
+  backgroundcolor=ebox,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  innerleftmargin=12pt,
+  innerrightmargin=10pt,
+  skipabove=8pt,
+  skipbelow=8pt,
+]{example}
+
+\begin{document}
+\thispagestyle{plain}
+
+\begin{center}
+{\LARGE\bfseries Constructive Gauges:\\[4pt]
+A Plain-English Walkthrough}
+
+\vspace{12pt}
+{\large K.R.\ Ryan}\\[4pt]
+{\small Independent Researcher}\\[2pt]
+{\small \href{mailto:gancor@gancor.xyz}{gancor@gancor.xyz}}
+
+\vspace{8pt}
+April 2026 \quad|\quad Companion to \emph{Constructive Gauges}
+
+\vspace{6pt}
+{\small A plain-English companion to the main paper, for LPs and practitioners.}
+\end{center}
+
+\vspace{8pt}
+{\color{grule}\hrule}
+\vspace{8pt}
+
+\begin{center}
+\small
+\begin{tabular}{@{}c@{\hspace{4pt}}l@{\hspace{20pt}}c@{\hspace{4pt}}l@{\hspace{20pt}}c@{\hspace{4pt}}l@{}}
+{\color{rbar}\rule{3pt}{10pt}} & Claim &
+{\color{ibar}\rule{3pt}{10pt}} & Intuition &
+{\color{ebar}\rule{3pt}{10pt}} & Worked numbers \\
+\end{tabular}
+\end{center}
+
+\vspace{8pt}
+{\color{grule}\hrule}
+
+\begin{intuition}
+\textbf{Before you start.} Terms this walkthrough leans on:
+\begin{itemize}[leftmargin=2em,nosep]
+\item \textbf{Tick}: an integer price step; one tick is a $0.01\%$ price move.
+\item \textbf{Width}: how many ticks a position spans. Narrow = tight around the current price.
+\item \textbf{Nominal liquidity ($L$)}: the position's raw liquidity number, roughly proportional to capital divided by width.
+\item \textbf{In-range / out-of-range}: whether the current tick lies inside the position's range.
+\item \textbf{Impermanent loss}: the balance-sheet cost to an LP as the price moves through the range (token mix shifts, fees may not cover it).
+\item \textbf{Accumulator}: the gauge's running total of credited rewards per unit of staked liquidity; each LP's claim is the delta since they last snapshotted it.
+\end{itemize}
+\end{intuition}
+
+\begin{result}
+\textbf{Roadmap.}
+\begin{itemize}[leftmargin=2em,nosep]
+\item \textbf{Problem}: current gauges reward nominal presence at the active tick.
+\item \textbf{Fix}: replace raw liquidity $L$ with a four-factor score $L \cdot c \cdot f \cdot \mathbf{1}$.
+\item \textbf{Result}: parasitic attackers lose most of their reward; normal LPs largely keep theirs.
+\item \textbf{Why all three corrections}: dropping any one of $c$, $f$, or $\mathbf{1}$ reopens exactly one attack.
+\end{itemize}
+\end{result}
+
+\section{The problem}
+
+Concentrated-liquidity (CL) gauges hand out emission rewards (a protocol's governance token) to liquidity providers. They do it in the simplest way possible: every LP earns a share proportional to their nominal staked liquidity.
+
+That sounds fine, but it treats very different positions as equal:
+
+\begin{itemize}[leftmargin=2em]
+\item A wide position doing little work earns the same per unit of $L$ as a tight position doing real work.
+\item A one-second-old position earns the same as a week-old one.
+\item In naive scoring, a position whose range no longer covers the current tick would earn the same as one actually serving trades. (Most live CL gauges already handle this third gap via their per-position accumulator; the first two are the ones that bite in practice.)
+\end{itemize}
+
+Parasitic extraction exploits these gaps. A deposit-then-withdraw cycle with a tight position at the current tick can harvest emissions without ever bearing impermanent loss or providing real depth. The main paper (Ryan, 2026d) proposes fixes, and this companion walks through why they work.
+
+\section{The corrective scoring function}
+
+The paper replaces ``nominal staked liquidity'' with a product of four factors:
+
+\begin{result}
+\[
+\textcolor{ikey}{\;S_i \;=\; L_i \cdot c(w_i) \cdot f(t - t_i) \cdot \mathbf{1}[\tau \in \text{range}_i]\;}
+\]
+\end{result}
+
+Each factor:
+
+\begin{itemize}[leftmargin=2em]
+\item $L_i$: \textbf{nominal liquidity} (unchanged from the baseline gauge).
+\item $c(w_i)$: a \textbf{concentration weight}. Tight positions (small $w$) score higher than wide ones. Capped so infinitely-tight positions don't blow up.
+\item $f(t - t_i)$: a \textbf{freshness weight}. Fresh positions start at zero, ramp up to full over a warmup window, then stay there until the next rebalance.
+\item $\mathbf{1}[\tau \in \text{range}_i]$: an \textbf{in-range indicator}. One when the tick is inside the position's range, zero otherwise.
+\end{itemize}
+
+The mechanical change is a single substitution inside the existing gauge:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & Each LP's reward share & What it measures \\
+\midrule
+Old rule & $L_i / \sum_j L_j$ & nominal stake at the active tick \\
+New rule & $S_i / \sum_j S_j$ & proxy for tradeable depth contributed \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+That is the whole mechanism; the rest of the paper shows the product behaves well.
+
+\begin{intuition}
+Each factor plugs one of the three gaps from the previous section. Concentration plugs width arbitrage (wide positions earn less per $L$). Freshness plugs the short-cycle deposit-and-withdraw attack (fresh positions earn almost nothing). The indicator plugs passive out-of-range accrual (drifted-out positions earn zero).
+
+The product is a proxy for real tradeable depth contributed right now.
+\end{intuition}
+
+\begin{example}
+\textbf{Side-by-side: same capital, different width.} Both LPs stake nominal liquidity $L = 1{,}000$ at the current tick on a CL100 pool, both past the warmup, both in-range. With the reference concentration curve ($c_{\max} = 100$, $w_{\text{ref}} = 1{,}000 \times$ tickSpacing $= 100{,}000$ ticks):
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+LP & Width (ticks) & $c(w)$ & Score $S = L \cdot c \cdot f \cdot \mathbf{1}$ \\
+\midrule
+A (tight) & 200 (= 2 $\times$ tickSpacing, the min) & $100$ (capped) & $100{,}000$ \\
+B (wider) & 2{,}000 (= 20 $\times$ tickSpacing) & $50$ & $50{,}000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Under today's rule, both earn the same per unit of $L$. Under the new rule A earns $2\times$ B per unit of $L$, reflecting that tight liquidity at the active tick is more useful to swappers than wide liquidity spread across a range that mostly sits idle.
+\end{example}
+
+\section{How we think about LP behaviour}
+
+To talk about who the mechanism helps or hurts, we need a model of how the tick moves and what LPs do.
+
+\textbf{The tick.} The price in a CL pool is tracked as an integer \emph{tick}, where each tick is a $0.01\%$ price step. As swaps happen, the tick wanders up and down. The paper models this wandering as a random walk with volatility $\sigma$: over a period of $\delta t$ seconds, the tick typically drifts by about $\sigma\sqrt{\delta t}$ in log-price terms.
+
+\textbf{Two kinds of LP.}
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Parasitic (short-cycle).} Deposits a tight position right at the current tick, waits a few seconds, withdraws. Never there long enough to actually serve trade flow. Never takes impermanent loss.
+\item \textbf{Legitimate (active).} Deposits a position, leaves it up for a realistic time (minutes to hours), rebalances when the tick drifts. Provides real depth.
+\end{itemize}
+
+The question is: does the corrective scoring function hurt the parasitic LP without hurting the legitimate one?
+
+\section{Attackers get suppressed}
+
+\emph{(Main paper, Theorem 1.)}
+
+A short-cycle attacker deposits at the current tick with minimum width $w_{\min}$ and withdraws after $\delta t$ seconds. The paper shows their reward under the new scoring function is bounded:
+
+\begin{result}
+\[
+\frac{\text{attacker reward under new rule}}{\text{attacker reward under old rule}} \;\lesssim\; \underbrace{\frac{\bar f(\delta t)}{f_{\text{eq}}}}_{\text{freshness penalty}} \cdot \underbrace{\frac{c(w_{\min})}{c_{\text{ref}}}}_{\text{concentration ratio}}.
+\]
+\end{result}
+
+Two factors. The first is the \emph{freshness penalty}: how much of the warmup the attacker's position has completed, divided by $f_{\text{eq}}$, the freshness a typical legitimate LP runs at in steady state (a population average measured from the calibration dataset in the main paper).
+
+The second is the \emph{concentration ratio}: the attacker chooses minimum width, so this compares their concentration against $c_{\text{ref}}$, the population-average concentration of in-range legitimate LPs (again from the calibration dataset). In practice the attacker doesn't win much on this axis either, because honest LPs also tend to sit at the concentration cap.
+
+\textbf{Why the freshness factor dominates.} At short cycles $\delta t \le W$ (the warmup window), the time-averaged freshness simplifies to $\bar f(\delta t) = \delta t/(2W)$, a small number. Meanwhile a population of LPs rebalancing on the order of minutes has $f_{\text{eq}} \approx 1$. So the ratio is tiny.
+
+\begin{example}
+\textbf{Base WETH/USDC CL100 numbers.} Warmup $W = 20$ seconds, typical legitimate cadence about 6 minutes (from operational data). So $f_{\text{eq}} \approx 0.97$.
+
+A parasitic attacker cycling every 2 seconds gets
+\[
+\bar f(2) = \frac{2}{2 \cdot 20} = 0.05.
+\]
+Plug in with $c(w_{\min})/c_{\text{ref}} \approx 1$:
+\[
+\frac{\text{new reward}}{\text{old reward}} \;\lesssim\; \frac{0.05}{0.97} \;\approx\; 5.2\%.
+\]
+A parasitic attacker cycling once per Base block earns at most about $5\%$ of what the current gauge would pay. Combined with the minimum-width floor from Ryan (2026c), short-cycle extraction collapses below $1\%$.
+\end{example}
+
+\begin{intuition}
+Freshness dominates the short-cycle bound. At $\delta t \to 0$, freshness goes to zero and the bound collapses. Concentration matters more against the slower ``wide position'' variants of the attack.
+
+A subtle point behind the bound: freshness goes \emph{up} as the position ages, while the chance of being in range goes \emph{down} (the tick has more time to wander away). Because these two factors pull in opposite directions over the cycle, their combined contribution is less than naive multiplication would suggest. The main paper's proof makes this precise with a standard inequality for oppositely-trending functions.
+\end{intuition}
+
+\section{Normal LPs keep yield}
+
+\emph{(Main paper, Theorem 2.)}
+
+If the new rule just penalised everyone equally, it wouldn't be useful. Theorem 2 says honest LPs at the population-typical profile keep most of their yield:
+
+\begin{result}
+\[
+\frac{\text{honest LP reward under new rule}}{\text{honest LP reward under old rule}} \;\gtrsim\; \frac{\bar f(\rho)}{f_{\text{eq}}} \cdot \frac{c(w_{\text{legit}})}{c_{\text{ref}}}.
+\]
+\end{result}
+
+Same shape as Theorem 1, opposite direction. An honest LP who rebalances at roughly the population-typical cadence $\rho$ and holds roughly the population-typical width lands with both ratios close to 1, so the drag is negligible.
+
+\begin{intuition}
+Drag appears only for LPs at the margins. If you rebalance much more often than everyone else, your freshness stays in the ramp-up zone and you earn less per second. If you hold wider than everyone else, you earn less per unit of $L$. The mechanism nudges LPs towards ``whatever most active LPs are doing'', which is precisely the behaviour that provides real depth.
+\end{intuition}
+
+\begin{example}
+An honest WETH/USDC LP at the population profile holds width near the cap (so $c(w_{\text{legit}})/c_{\text{ref}} \approx 1$) and rebalances every 6 minutes (so $\bar f(\rho)/f_{\text{eq}} = 1$). New-rule yield matches old-rule yield; drag negligible.
+
+An overly-active LP rebalancing every 10 seconds: $\bar f(10)/f_{\text{eq}} = 0.25/0.97 \approx 0.26$. They earn about a quarter of what they would have. The mechanism punishes atypical aggression, not legitimate activity.
+\end{example}
+
+\section{Why all three terms matter}
+
+\emph{(Main paper, Theorem 3.)}
+
+Could you keep only one or two of the corrections and still get the result? No. Dropping any one reopens exactly one parasitic attack.
+
+\begin{result}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Drop this & Reopens this attack & How to witness \\
+\midrule
+$f$ (freshness) & short-cycle spam & tight position, $\delta t \to 0$ \\
+$\mathbf{1}$ (indicator) & out-of-range accrual & hold after tick drifts out \\
+$c$ (concentration) & width arbitrage & wide position earns same per $L$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{result}
+
+\begin{intuition}
+Each of the three factors plugs a distinct hole, and none of the three is redundant. The mechanism is the minimal fix; you don't get to simplify it.
+
+For existing CL gauges (Slipstream, Uniswap V3, PancakeSwap V3), out-of-range positions already stop accruing because the per-position accumulator is built to skip them. The indicator is still a necessary part of the general scoring family (and of any gauge that doesn't already skip them), but for these mainstream deployments the operationally novel additions are the concentration and freshness terms.
+\end{intuition}
+
+\begin{result}
+\textbf{Payoff so far.} Parasitic attackers are bounded to a few percent of their current yield (Theorem 1). Normal LPs at typical profile keep effectively all of theirs (Theorem 2). All three corrective factors are independently necessary (Theorem 3).
+\end{result}
+
+\section{Two edge cases}
+
+Two design questions the main paper handles as propositions.
+
+\subsection{Can an attacker just spam rebalances to reset the freshness clock?}
+
+\emph{(Main paper, Proposition 1.)}
+
+\begin{result}
+\textbf{No.} Rebalancing at any interval $\delta < W$ (below the warmup window) gives time-averaged freshness $\bar f(\delta) = \delta/(2W)$, which is strictly less than the legitimate population's $f_{\text{eq}}$. A spammer always earns strictly less than an LP at typical cadence.
+\end{result}
+
+\begin{intuition}
+The ramp is the point. Rebalancing constantly keeps the position perpetually in the low-freshness zone; earning less, not more. You can't game a ramp by resetting its start more often.
+\end{intuition}
+
+\subsection{Can an LP rebalance right before claiming to inflate their payout?}
+
+\emph{(Main paper, Proposition 2.)}
+
+\begin{result}
+\textbf{No.} Under the standard Synthetix-style reward accumulator, the reward claimable at any moment depends only on what has already accumulated up to that moment. A rebalance right before claiming affects future accrual but cannot retroactively inflate what has already been accrued.
+\end{result}
+
+\begin{intuition}
+Rewards pile up continuously into a per-position running total. Claiming just reads that total. A rebalance at time $t$ only starts affecting the accumulator from $t$ onwards, so it can't reach back and boost the past.
+
+This is a property of the accumulator pattern, not a new invention, but it's worth pinning down so implementers don't accidentally break it (for example by evaluating freshness at claim time instead of integrating it continuously).
+\end{intuition}
+
+\section{Empirical and engineering layers}
+
+Three layers sit on top of the theorems.
+
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Tick model validated on-chain.} The assumed log-price random walk is checked against $31{,}912$ live swaps across two Aerodrome CL100 pools. Agreement is tight at short cycles. Long-cycle departures run conservative (reality is slightly more ``in range'' than the model predicts), so the bounds hold.
+\item \textbf{Reference Foundry suite.} A minimal reference implementation of the scoring function runs against live Aerodrome Slipstream on Base mainnet. Each claim maps to a specific test (tight-vs-wide, freshness decay, out-of-range zero, multi-epoch accumulation).
+\item \textbf{Operational calibration.} Parameters ($W$, $c_{\max}$, minimum width) are fixed from an operational dataset of $94{,}469$ rebalance events across $48$ pools over a $38$-day pre-migration window, grounded in observed LP behaviour rather than guesswork.
+\end{itemize}
+
+\section{What's not in this walkthrough}
+
+\begin{itemize}[leftmargin=2em]
+\item The ve(3,3) compatibility argument. The corrective scoring is a drop-in replacement for the existing gauge accumulator and doesn't touch voting, bribes, or veNFT mechanics.
+\item The Aerodrome post-upgrade step-gate comparison. The deployed 10-second all-or-nothing gate with full forfeit below threshold is less general than a continuous ramp; see the main paper for the direct comparison.
+\item Engineering detail of the reference implementation. The main paper and its Foundry README cover this.
+\end{itemize}
+
+For formal proofs, empirical tables, and the ve(3,3) framing, see the main paper.
+
+\end{document}
