@@ -218,6 +218,8 @@ The framework is the third contribution in a research programme on concentrated-
 
 \cite{heimbach2022} document wide dispersion in Uniswap V3 LP widths and lifetimes, with only actively-managed positions earning non-trivial returns; the dataset in~\S\ref{sec:calibration} sits within that tail. The loss-versus-rebalancing framework of~\cite{milionis2022b} supplies the Brownian log-price model used in~\S\ref{sec:analysis}.~\cite{lloyd2023} show empirically that bribe markets determine veToken allocation, placing the LP-scoring formula as the lever on whether bribed emissions produce real depth. Parasitic liquidity is distinct from the just-in-time attack of~\cite{xiong2023}, which captures fees around a single swap rather than emissions over the accumulator.
 
+Spearbit's November 2023 security review of the Slipstream concentrated-liquidity implementation~\cite[\S5.3.1]{spearbit2023} noted that the reward accumulator may be gameable on chains with a mempool, described a claim-unstake-JIT-restake loop, and recommended evaluating whether a volume-based reward system would be fairer than the time-based accumulator; the issue was acknowledged, with monitoring rather than redesign proposed. The present work formalises a more general strategy space that does not require mempool visibility (\S\ref{sec:empirical}), demonstrates via the operational dataset of~\S\ref{sec:calibration} that gaming is economically viable at production scale, and specifies a corrective scoring function tracking tradeable depth.
+
 Two deployed systems implement partial analogues. Algebra's eternal farming exposes an optional \texttt{minimalPositionWidth} parameter (used by QuickSwap on many Polygon incentives at five times tickSpacing), a direct analogue of the step-function minimum-width remediation of~\cite[\S5.2]{ryan2026c}. Merkl by Angle Labs~\cite{merkl2023} distributes rewards off-chain via a time-weighted liquidity-contribution factor that rewards ``sustained concentration over time, not short-term volume or swap activity'', a close conceptual analogue of the combined concentration and in-range-time factors here. Detailed comparison appears in~\S\ref{sec:relatedsystems}.
 
 \subsection{Scope}\label{sec:scope}
@@ -293,12 +295,15 @@ The three theorems share a Gaussian log-price model and a mean-field concentrati
 
 \begin{table}[H]
 \centering
-\footnotesize
-\begin{tabular}{@{}cL{10.5cm}@{}}
+\scriptsize
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{@{}cL{8.5cm}@{}}
 \toprule
 Symbol & Meaning \\
 \midrule
+\addlinespace[3pt]
 \multicolumn{2}{@{}l}{\textbf{Price process and time}} \\
+\addlinespace[3pt]
 $X(t)$ & log-price of the pool, $\log P(t)$ \\
 $\tau(t)$ & pool tick, $X(t)/\eta$ \\
 $\eta$ & tick-to-log-price scaling, $\log(1.0001)$ \\
@@ -307,15 +312,17 @@ $\delta t$ & parasitic cycle length \\
 $\rho$ & rebalance interval of a specific LP \\
 $\rho_{\text{legit}}$ & population-typical legitimate-LP rebalance interval \\
 $\delta t^*$ & range-exit scale, $(a\eta)^2/\sigma^2$ \\
-\addlinespace
+\addlinespace[8pt]
 \multicolumn{2}{@{}l}{\textbf{Position geometry}} \\
+\addlinespace[3pt]
 $w$ & position width \\
 $w_{\min}$ & minimum permissible width \\
 $a$ & half-width, $w_{\min}/2$ \\
 $L$ & nominal liquidity \\
 $L_{\text{active}}(s)$ & total in-range liquidity at time $s$ \\
-\addlinespace
+\addlinespace[8pt]
 \multicolumn{2}{@{}l}{\textbf{Scoring factors}} \\
+\addlinespace[3pt]
 $c(w)$ & concentration weight \\
 $c_{\max}$ & concentration cap \\
 $c_{\text{ref}}$ & population-averaged concentration of in-range legitimate LPs \\
@@ -326,8 +333,9 @@ $W$ & freshness warmup period \\
 $f_0$ & freshness floor \\
 $P_{\text{in}}$ & in-range fraction of a cycle \\
 $S_{\text{total}}$ & sum of per-LP scores \\
-\addlinespace
+\addlinespace[8pt]
 \multicolumn{2}{@{}l}{\textbf{Revenue and population}} \\
+\addlinespace[3pt]
 $R^{\text{std}}$ & expected revenue under the CL gauge baseline \\
 $R^{\text{corr}}$ & expected revenue under the corrective scoring function \\
 $N$ & number of LPs in the pool \\
@@ -1000,6 +1008,9 @@ Lloyd, T., O'Broin, D.\ and Harrigan, M.\ (2023) `Emergent Outcomes of the veTok
 \bibitem{xiong2023}
 Xiong, X., Wang, Z., Knottenbelt, W.\ and Huth, M.\ (2023) `Demystifying Just-in-Time (JIT) Liquidity Attacks on Uniswap V3', \textit{IACR Cryptology ePrint Archive}, Paper 2023/973. Available at: \url{https://eprint.iacr.org/2023/973}.
 
+\bibitem{spearbit2023}
+Spearbit (2023) `Velodrome Finance Security Review', \textit{Spearbit Portfolio}, November 2023. Available at: \url{https://github.com/spearbit/portfolio/raw/master/pdfs/Velodrome-Spearbit-Security-Review-Nov23.pdf}.
+
 \bibitem{merkl2023}
 Angle Labs (2023) `Merkl: Concentrated Liquidity Mechanisms', \textit{Merkl Documentation}. Available at: \url{https://docs.merkl.xyz/merkl-mechanisms/campaign-types/concentrated-liquidity-mechanisms}.
 
@@ -1020,10 +1031,10 @@ Aerodrome Finance (2026) `The economic case for Aero', \textit{aero.xyz}. Availa
 The empirical in-range probability validation in~\S\ref{sec:empirical-pin} was computed from live \texttt{Swap} event traces on Base mainnet.
 
 \begin{enumerate}[leftmargin=2em]
-\item Pull all \texttt{Swap} events from the target pool over a $24$-hour window (block range $[\text{head} - 43200, \text{head}]$ on Base, with $2$-second blocks). The Uniswap V3 swap event topic hash is \texttt{0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67}; the tick is the fifth $32$-byte word of the event data, decoded as a sign-extended \texttt{int24}.
+\item Pull all \texttt{Swap} events from the target pool over a $24$-hour window (block range $[\text{head} - 43200, \text{head}]$ on Base, with $2$-second blocks). Decode the tick from the fifth $32$-byte word of each event's data as a sign-extended \texttt{int24}.
 \item Build a piecewise-constant tick function $\tau(b)$ keyed by block number.
 \item Estimate realised volatility $\sigma$ by root-mean-square of standardised log-return increments: $\sigma = \sqrt{\mathbb{E}[(\Delta X / \sqrt{\Delta t})^2]}$ where $X = \tau \cdot \log(1.0001)$.
-\item For each $(\delta t, w)$ pair, uniformly sample $N_s = 1500$ starting blocks from the trace (excluding a buffer equal to the maximum $\delta t$ from the trace end). For each sample $s$, compute the in-range fraction of $[s, s + \delta t / 2]$ (in blocks) for a position of half-width $w/2$ centred at $\tau(s)$.
+\item For each $(\delta t, w)$ pair, uniformly sample $N_s = 1500$ starting blocks from the trace. For each sample $s$, compute the in-range fraction of $[s, s + \delta t / 2]$ for a position of half-width $w/2$ centred at $\tau(s)$.
 \item Compare to the theoretical $P_{\text{in}}(\delta t; a, \sigma)$ from~(\ref{eq:pin}) by numerical integration ($400$ midpoint-rule nodes).
 \end{enumerate}
 
@@ -1031,9 +1042,7 @@ The computation runs in under a minute per pool on a standard workstation with a
 
 \section{Fork test reproduction}\label{app:forktest}
 
-The repository is at \url{https://github.com/g4nc0r/constructive-gauges}. The framework's fork-test results in Table~\ref{tab:forkmap} are reproduced by a minimal reference implementation of the scoring function. It implements equation~(\ref{eq:score}) with the parameter choices of Table~\ref{tab:reference} and a minimal Synthetix-style accumulator sufficient to reproduce the paper's numerical claims.
-
-The suite runs against the Aerodrome Slipstream WETH/USDC CL100 pool on Base mainnet (\texttt{0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59}), with cross-chain replications on BSC and Arbitrum One. Reproduction from a clean checkout:
+The repository is at \url{https://github.com/g4nc0r/constructive-gauges}; the Zenodo DOI \url{https://doi.org/10.5281/zenodo.19690075} resolves to an immutable archival snapshot. The reference implementation realises equation~(\ref{eq:score}) with the parameter choices of Table~\ref{tab:reference} on a minimal Synthetix-style accumulator, and reproduces the fork-test results in Table~\ref{tab:forkmap}. The suite runs against the Aerodrome Slipstream WETH/USDC CL100 pool on Base mainnet (\texttt{0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59}), with cross-chain replications on BSC and Arbitrum One. Reproduction from a clean checkout:
 
 \begin{center}\begin{minipage}{0.85\textwidth}\begin{verbatim}
 cd foundry
@@ -1055,7 +1064,7 @@ ARB_RPC_URL=<your_arb_rpc> forge test \
     --match-contract FrameworkRamsesForkTest -vv
 \end{verbatim}\end{minipage}\end{center}
 
-Any working RPC endpoint is acceptable; the public endpoints \texttt{https://mainnet.base.org}, \texttt{https://bsc-dataseed.bnbchain.org}, and \texttt{https://arb1.arbitrum.io/rpc} are sufficient. Forge caches RPC responses, so repeat runs are fast.
+Any working public RPC endpoint on each chain is sufficient. Forge caches RPC responses, so repeat runs are fast.
 
 Numerical values in Table~\ref{tab:forkmap} are single-run against live Base state and shift with pool state; qualitative claims hold deterministically.
 
