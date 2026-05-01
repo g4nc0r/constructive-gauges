@@ -169,7 +169,7 @@ April 2026 \quad|\quad Companion to \emph{Constructive Gauges}
 
 \section{The problem}
 
-Concentrated-liquidity (CL) gauges hand out emission rewards (a protocol's governance token) to liquidity providers. They do it in the simplest way possible. Every LP earns a share proportional to their nominal staked liquidity.
+Concentrated liquidity (CL) gauges hand out emission rewards (a protocol's governance token) to liquidity providers. They do it in the simplest way possible. Every LP earns a share proportional to their nominal staked liquidity.
 
 That sounds fine, but it treats very different positions as equal:
 
@@ -195,7 +195,7 @@ Each factor:
 
 \begin{itemize}[leftmargin=2em]
 \item $L_i$: \textbf{nominal liquidity} (unchanged from the baseline gauge).
-\item $c(w_i)$: a \textbf{concentration weight}. Tight positions (small $w$) score higher than wide ones. Capped so infinitely-tight positions don't blow up.
+\item $c(w_i)$: a \textbf{concentration weight}. Tight positions (small $w$) score higher than wide ones. Capped so infinitely tight positions don't blow up.
 \item $f(t - t_i)$: a \textbf{freshness weight}. Fresh positions start at zero, ramp up to full over a warmup window, then stay there until the next rebalance.
 \item $\mathbf{1}[\tau \in \text{range}_i]$: an \textbf{in-range indicator}. One when the tick is inside the position's range, zero otherwise.
 \end{itemize}
@@ -290,7 +290,7 @@ A parasitic attacker cycling once per Base block earns at most about $5\%$ of wh
 \begin{intuition}
 Freshness dominates the short-cycle bound. At $\delta t \to 0$, freshness goes to zero and the bound collapses. Concentration matters more against the slower ``wide position'' variants of the attack.
 
-There's a subtler structure inside the bound. Freshness goes \emph{up} as the position ages, while the chance of being in range goes \emph{down} (the tick has more time to wander away). Because these two factors pull in opposite directions over the cycle, their combined contribution is less than naive multiplication would suggest. The main paper's proof makes this precise with a standard inequality for oppositely-trending functions.
+There's a subtler structure inside the bound. Freshness goes \emph{up} as the position ages, while the chance of being in range goes \emph{down} (the tick has more time to wander away). Because these two factors pull in opposite directions over the cycle, their combined contribution is less than naive multiplication would suggest. The main paper's proof makes this precise with a standard inequality for oppositely trending functions.
 \end{intuition}
 
 \section{Normal LPs keep yield}
@@ -314,7 +314,7 @@ Drag appears only for LPs at the margins. If you rebalance much more often than 
 \begin{example}
 An honest WETH/USDC LP at the population profile holds width near the cap (so $c(w_{\text{legit}})/c_{\text{ref}} \approx 1$) and rebalances every 6 minutes (so $\bar f(\rho)/f_{\text{eq}} = 1$). New-rule yield matches old-rule yield; drag negligible.
 
-An overly-active LP rebalancing every 10 seconds has $\bar f(10)/f_{\text{eq}} = 0.25/0.97 \approx 0.26$ and earns about a quarter of what they would have. The mechanism punishes atypical aggression, not legitimate activity.
+An overly active LP rebalancing every 10 seconds has $\bar f(10)/f_{\text{eq}} = 0.25/0.97 \approx 0.26$ and earns about a quarter of what they would have. The mechanism punishes atypical aggression, not legitimate activity.
 \end{example}
 
 \section{Why all three terms matter}
@@ -368,7 +368,7 @@ The ramp is the point. Rebalancing constantly keeps the position perpetually in 
 \emph{(Main paper, Proposition 2.)}
 
 \begin{result}
-\textbf{No.} Under the standard Synthetix-style reward accumulator, the reward claimable at any moment depends only on what has already accumulated up to that moment. A rebalance right before claiming affects future accrual but cannot retroactively inflate what has already been accrued.
+\textbf{No.} Under the standard Synthetix reward accumulator, the reward claimable at any moment depends only on what has already accumulated up to that moment. A rebalance right before claiming affects future accrual but cannot retroactively inflate what has already been accrued.
 \end{result}
 
 \begin{intuition}

@@ -38,3 +38,13 @@ Thumbs.db
 *.synctex.gz
 *.bbl
 *.blg
+
+# Local-only working notes
+Working Notes/
+
+# Reproduction code held back for paper-only revisions.
+# (foundry/ is already tracked in HEAD; gitignore here only suppresses
+# NEW files inside it. Existing tracked files stay where they are;
+# explicit modifications won't be staged for paper-only commits.)
+foundry/.env
+foundry/lib/
