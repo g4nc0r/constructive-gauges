@@ -4,7 +4,7 @@ Fork tests validating the corrective scoring function from
 
 > Ryan, K.R. (2026d) *Constructive Gauges: Remediating Parasitic Liquidity in Concentrated Liquidity Emissions*.
 
-The contracts under `src/` are a **minimal reference implementation** of the four-factor scoring function $S_i = L_i \cdot c(w) \cdot f(t - t_i) \cdot \mathbf{1}[\tau \in [\ell, u]]$ and the accumulator required to reproduce the paper's numerical claims. Production-level concerns (keeper delegation, residual handling, MEV protection, voting, emission allocation across pools) are intentionally **out of scope**; they are orthogonal to the scoring framework and would be provided by a host protocol.
+The contracts under `src/` are a **minimal reference implementation** of the three-factor scoring function $S_i = L_i \cdot c(w) \cdot f(t - t_i) \cdot \mathbf{1}[\tau \in [\ell, u]]$ and the accumulator required to reproduce the paper's numerical claims. Production-level concerns (keeper delegation, residual handling, MEV protection, voting, emission allocation across pools) are intentionally **out of scope**; they are orthogonal to the scoring framework and would be provided by a host protocol.
 
 ## Layout
 
@@ -23,7 +23,7 @@ The contracts under `src/` are a **minimal reference implementation** of the fou
 
 ## Reference parameters
 
-The reference instance in §5.1 of the paper uses:
+The reference instance in §6 of the paper uses:
 
 | Parameter | Value |
 |---|---|
@@ -34,7 +34,7 @@ The reference instance in §5.1 of the paper uses:
 | Decay period | 4 h |
 | Minimum width | 2 × tickSpacing |
 
-Different parameter choices can be tested by editing the constants in `ConcentrationMath.sol` and `FreshnessMath.sol` and re-running the suite; the framework's qualitative properties (monotonicity in width, monotonicity in freshness, zero out-of-range) hold under any choice satisfying the shape conditions in §3 of the paper.
+Different parameter choices can be tested by editing the constants in `ConcentrationMath.sol` and `FreshnessMath.sol` and re-running the suite; the framework's qualitative properties (monotonicity in width, monotonicity in freshness, zero out-of-range) hold under any choice satisfying the shape conditions in §4 of the paper.
 
 ## Reproduction
 
@@ -62,13 +62,13 @@ Any working RPC endpoint is acceptable. Public endpoints `https://mainnet.base.o
 
 ## Test-to-claim mapping
 
-Each test corresponds to a row in Table 2 of the paper:
+Each test maps to a claim in §6.1 (fork test summary) and Appendix D (per-test descriptions) of the paper:
 
 | Test | Claim validated |
 |---|---|
 | `test_ConcentrationMath_Reference` | $c(w)$ library produces the expected values at standard widths |
 | `test_FreshnessMath_Reference` | $f(x)$ library produces the expected decay profile |
-| `test_FreshnessMath_RebalanceSpamSelfDefeat` | Rebalance-spam self-defeat (Remark 1) |
+| `test_FreshnessMath_RebalanceSpamSelfDefeat` | Rebalance-spam self-defeat (Proposition 1) |
 | `test_TightRangeScoresHigher` | Concentration term: tight positions score higher per unit capital |
 | `test_TightRangeEarnsMoreEmissions` | Emission rewards follow the scoring function, not nominal liquidity |
 | `test_FreshnessDecay` | Freshness decays from 100% at $t = W$ to floor $f_0$ over the decay period |
@@ -93,7 +93,7 @@ The cross-chain fork tests (rows 10-18) exist to pre-empt the claim that the sco
 
 This spans three chains, three distinct CL implementations (Slipstream, Uniswap V3, Algebra Integral), two distinct gauge architectures (ve(3,3) and farm), and two sub-families of ve(3,3) CL DEX (Velodrome/Solidly and Ramses-family), all on chains without Flashblocks, confirming the scoring framework is independent of chain-level timing infrastructure and protocol-specific implementation choices.
 
-Numerical values reported in the paper's Table 2 are from single-run executions against live Base mainnet state at the time of writing. Values shift between runs as pool state evolves; the qualitative claims (ordering, zero-result for out-of-range, near-equal ratios between score and emission) hold deterministically.
+Numerical values reported in the paper's §6.1 and Appendix D are from single-run executions against live Base mainnet state at the time of writing. Values shift between runs as pool state evolves; the qualitative claims (ordering, zero-result for out-of-range, near-equal ratios between score and emission) hold deterministically.
 
 ## Notes on scope
 
@@ -101,7 +101,7 @@ This reference implementation deliberately omits:
 
 - **Rebalancing**: atomic withdraw + mint + deposit. The paper's Theorem 1 bounds parasitic extraction over arbitrary cycle times; rebalancing mechanics are orthogonal.
 - **Residual handling**: the geometric residual from rebalancing (Theorem 1 of Ryan, 2026a) is an implementation concern that does not affect the scoring framework.
-- **Keeper delegation, MEV protection, voting, bribing, emission allocation**: all out of scope per §1.5 of the paper.
+- **Keeper delegation, MEV protection, voting, bribing, emission allocation**: all out of scope per §8.1 of the paper.
 
 A production gauge implementing the framework would layer these concerns over the core scoring logic; the present suite demonstrates only that the scoring function itself behaves as the theorems claim.
 

@@ -8,6 +8,8 @@ authors:
     orcid: "https://orcid.org/0009-0004-6295-7040"
 type: software
 repository-code: "https://github.com/g4nc0r/constructive-gauges"
+# license covers the code in this repository; the paper PDF and LaTeX source
+# are (c) K. R. Ryan, all rights reserved. See the Licence section of README.md.
 license: MIT
 preferred-citation:
   type: report
@@ -20,6 +22,7 @@ preferred-citation:
   institution:
     name: "Social Science Research Network"
   number: "6625980"
+  doi: "10.2139/ssrn.6625980"
   url: "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6625980"
 references:
   - type: report

@@ -48,3 +48,7 @@ Working Notes/
 # explicit modifications won't be staged for paper-only commits.)
 foundry/.env
 foundry/lib/
+
+# Python
+__pycache__/
+*.pyc

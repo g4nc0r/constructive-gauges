@@ -145,6 +145,10 @@
 
 % Hyperlinks + PDF metadata
 \usepackage{hyperref}
+% Forbid mid-URL line breaks (split URLs extract as broken references on SSRN;
+% see programme tracker C26). Applied 2026-07-22.
+\def\UrlBreakPenalty{10000}
+\def\UrlBigBreakPenalty{10000}
 \hypersetup{
   colorlinks=true,
   allcolors=blue!50!black,
@@ -241,7 +245,7 @@ This paper identifies and corrects a measurement gap in ve(3,3) concentrated liq
 % ---- 1. Introduction ----
 \section{Introduction}\label{sec:intro}
 
-Concentrated liquidity gauges in ve(3,3) protocols pay emissions in proportion to staked liquidity at the active tick, instant by instant, on the Synthetix \texttt{rewardPerToken} accumulator\cite{synthetix2019,egorov2019}. The accumulator was designed for fungible-token staking, where stake share equals tradeable-depth share. Under concentrated liquidity\cite{adams2021} the two diverge: a position can sit at the active tick without serving swaps, and can sit there only briefly. The accumulator therefore pays for nominal stake rather than the depth that voters directed emissions toward.
+Concentrated liquidity gauges in ve(3,3) protocols pay emissions in proportion to staked liquidity at the active tick, instant by instant, on the Synthetix \texttt{rewardPerToken} accumulator\cite{synthetix2019,egorov2019}. The accumulator was designed for fungible-token staking, where stake share equals tradeable-depth share. Under concentrated liquidity\cite{adams2021} the two diverge: a position can sit at the active tick without serving swaps, and can sit there only briefly. The accumulator therefore pays for nominal stake rather than the depth that voters directed emissions towards.
 
 The divergence matters because ve(3,3) emissions are a voter-directed subsidy\cite{cronje2022}. The inflation budget is allocated across pools by veNFT votes, with the subsidy intended to attract real liquidity to voted pools. When the accumulator pays for nominal stake rather than tradeable depth, positions satisfying gauge staking conditions without serving swaps collect the subsidy regardless. The resulting parasitic-liquidity vector\cite{ryan2026c} admits, at the limit, a minimum-width position deposited and withdrawn across a single block, earning emissions without ever being present for a swap.
 
@@ -585,7 +589,7 @@ Mean & $176$ \\
 \end{tabular}
 \end{table}
 
-The median active position spans 200 ticks, with the interquartile range running from 67 to 200 ticks. The distribution shifts mid-window. Events before 8~April concentrate around a 100-tick median; from 8~April onwards positions widened for impermanent loss and fee reasons independent of gauge mechanics, lifting the median to 200 ticks. Both regimes sit in the non-capped regime of the reference concentration curve. With $w_{\text{ref}} = 1000 \times$ tickSpacing, the cap $c_{\max} = 100$ activates only at $w \leq w_{\text{ref}}/c_{\max}$, well below the observed p25 at typical active-LP tickSpacings, so the curve applies a smooth gradient across the observed distribution rather than clipping to the cap.
+The median active position spans 200 ticks, with the interquartile range running from 67 to 200 ticks. The distribution shifts mid-window. Events before 8~April concentrate around a 100-tick median; from 8~April onwards positions widened for impermanent loss and fee reasons independent of gauge mechanics, lifting the median to 200 ticks. Both regimes sit in the non-capped regime of the reference concentration curve. With $w_{\text{ref}} = 1000 \times$ tickSpacing, the cap $c_{\max} = 100$ activates only at $w \leq w_{\text{ref}}/c_{\max}$, well below the observed p25 at typical active-LP tickSpacings, so the curve applies a smooth gradient across the observed distribution rather than clipping to the cap. A tighter cap, for instance $c_{\max} = 25$, activates at $w \leq w_{\text{ref}}/25 = 40 \times$ tickSpacing, which is also below the observed p25; neither choice clips the bulk of the observed distribution, and the calibration of \S\ref{sec:calinterval} is unaffected by which value is taken. Resolution of the cap choice against operator data outside this dataset's active-management tail is left to a trilogy-wide calibration audit.
 
 \subsection{Rebalance interval distribution}\label{sec:calinterval}
 
@@ -733,17 +737,17 @@ The algebraic change is local: the Synthetix accumulator's $L_i/\sum_j L_j$ beco
 \bibitem{ryan2026c}
 Ryan, K.R. ``Parasitic Liquidity: Emission Extraction via Non-Functional Concentrated Liquidity Positions.'' \emph{SSRN Working Paper} (2026) \url{https://doi.org/10.2139/ssrn.6510118}.
 
-\bibitem{adams2021}
-Adams, H., Zinsmeister, N., Salem, M., Keefer, R., Robinson, D. ``Uniswap v3 Core.'' \emph{Uniswap Labs Technical Whitepaper} (2021) \url{https://uniswap.org/whitepaper-v3.pdf}.
-
 \bibitem{synthetix2019}
 Synthetix. ``StakingRewards Accumulator Pattern (\texttt{rewardPerToken} / \texttt{earned}).'' Canonical instance verified on-chain as \texttt{CurveRewards} at \texttt{0xDCB6A51eA3CA5d3Fd898Fd6564757c7aAeC3ca92} (MIT, Solidity 0.5.16) (2019) \url{https://etherscan.io/address/0xDCB6A51eA3CA5d3Fd898Fd6564757c7aAeC3ca92\#code}.
 
 \bibitem{egorov2019}
 Egorov, M. ``StableSwap: Efficient Mechanism for Stablecoin Liquidity'' (2019) \url{https://berkeley-defi.github.io/assets/material/StableSwap.pdf}.
 
+\bibitem{adams2021}
+Adams, H., Zinsmeister, N., Salem, M., Keefer, R., Robinson, D. ``Uniswap v3 Core.'' \emph{Uniswap Labs Technical Whitepaper} (2021) \url{https://uniswap.org/whitepaper-v3.pdf}.
+
 \bibitem{cronje2022}
-Cronje, A. ``Solidly: Preparation for Launch.'' \emph{Medium} (2022). Original post deleted; archived 29 April 2022 at \url{https://web.archive.org/web/20220429052133/https://andrecronje.medium.com/solidly-preparation-for-launch-8e653ce8a428}.
+Cronje, A. ``Solidly: Preparation for Launch.'' \emph{Medium} (2022). Original post deleted; archived 29 April 2022 at {\def\UrlBreakPenalty{100}\def\UrlBigBreakPenalty{100}\url{https://web.archive.org/web/20220429052133/https://andrecronje.medium.com/solidly-preparation-for-launch-8e653ce8a428}}.% over-column URL: breaks allowed (C26 exception).
 
 \bibitem{ryan2026a}
 Ryan, K.R. ``The Geometric Siphon: Emergent Capital Reallocation in Concentrated Liquidity Portfolios.'' \emph{SSRN Working Paper} (2026) \url{https://doi.org/10.2139/ssrn.6374838}.
@@ -770,10 +774,10 @@ Lloyd, T., O'Broin, D., Harrigan, M. ``Emergent Outcomes of the veToken Model.''
 Xiong, X., Wang, Z., Knottenbelt, W., Huth, M. ``Demystifying Just-in-Time (JIT) Liquidity Attacks on Uniswap V3.'' \emph{IACR Cryptology ePrint Archive}, Paper 2023/973 (2023) \url{https://eprint.iacr.org/2023/973}.
 
 \bibitem{spearbit2023}
-Spearbit. ``Velodrome Finance Security Review.'' \emph{Spearbit Portfolio} (November 2023) \url{https://github.com/spearbit/portfolio/raw/master/pdfs/Velodrome-Spearbit-Security-Review-Nov23.pdf}.
+Spearbit. ``Velodrome Finance Security Review.'' \emph{Spearbit Portfolio} (November 2023) {\def\UrlBreakPenalty{100}\def\UrlBigBreakPenalty{100}\url{https://github.com/spearbit/portfolio/raw/master/pdfs/Velodrome-Spearbit-Security-Review-Nov23.pdf}}.% over-column URL: breaks allowed (C26 exception).
 
 \bibitem{merkl2023}
-Angle Labs. ``Merkl: Concentrated Liquidity Mechanisms.'' \emph{Merkl Documentation} (2023) \url{https://docs.merkl.xyz/merkl-mechanisms/campaign-types/concentrated liquidity-mechanisms}.
+Angle Labs. ``Merkl: Concentrated Liquidity Mechanisms.'' \emph{Merkl Documentation} (2023) {\def\UrlBreakPenalty{100}\def\UrlBigBreakPenalty{100}\url{https://docs.merkl.xyz/merkl-mechanisms/campaign-types/concentrated-liquidity-mechanisms}}.% over-column URL: breaks allowed (C26 exception).
 
 \bibitem{aerodrome2026}
 Aerodrome Finance. ``Upgrades for a Supersonic Era.'' \emph{Medium} (2026) \url{https://medium.com/@aerodromefi/upgrades-for-a-supersonic-era-1861487f40c6}.
@@ -1065,7 +1069,9 @@ Three independent codebases reproduce the concentration, freshness, and in-range
 
 \section{Empirical validation reproduction}\label{app:reproduction}
 
-The empirical in-range probability validation in~\S\ref{sec:empirical-pin} was computed from live \texttt{Swap} event traces on Base mainnet. All \texttt{Swap} events from the target pool over a 24-hour window (block range $[\text{head} - 43200, \text{head}]$ on Base, with 2-second blocks) are pulled, with the tick decoded from the fifth 32-byte word of each event's data as a sign-extended \texttt{int24}. The events build a piecewise-constant tick function $\tau(b)$ keyed by block number, and realised volatility is estimated as $\sigma = \sqrt{\mathbb{E}[(\Delta X / \sqrt{\Delta t})^2]}$ with $X = \tau \cdot \log(1.0001)$. For each $(\delta t, w)$ pair, $N_s = 1500$ starting blocks are uniformly sampled from the trace, and for each sample $s$ the in-range fraction of $[s, s + \delta t / 2]$ is computed for a position of half-width $w/2$ centred at $\tau(s)$. The empirical estimate is compared to the theoretical $\bar P_{\text{in}}(\delta t; a, \sigma)$ from~(\ref{eq:pin}) by numerical integration with 400 midpoint-rule nodes. The computation runs in under a minute per pool on a standard workstation with a single RPC endpoint.
+The empirical in-range probability validation in~\S\ref{sec:empirical-pin} was computed from live \texttt{Swap} event traces on Base mainnet. All \texttt{Swap} events from the target pool over a 24-hour window (block range $[\text{head} - 43200, \text{head}]$ on Base, with 2-second blocks) are pulled, with the tick decoded from the fifth 32-byte word of each event's data as a sign-extended \texttt{int24}. The events build a piecewise-constant tick function $\tau(b)$ keyed by block number, and realised volatility is estimated as $\sigma = \sqrt{\mathbb{E}[(\Delta X / \sqrt{\Delta t})^2]}$ with $X = \tau \cdot \log(1.0001)$. For each $(\delta t, w)$ pair, $N_s = 1500$ starting blocks are uniformly sampled from the trace, and for each sample $s$ the in-range fraction of $[s, s + \delta t / 2]$ is computed for a position of half-width $w/2$ centred at $\tau(s)$. The half-cycle horizon reflects a symmetric deposit-rebalance round trip of length $\delta t$ in which the position is anchored at its tick at the cycle midpoint, so the in-range measurement runs from the anchor time forward to the next rebalance opportunity rather than across the full round trip. The empirical estimate is compared to the theoretical $\bar P_{\text{in}}(\delta t; a, \sigma)$ from~(\ref{eq:pin}) by numerical integration with 400 midpoint-rule nodes. The computation runs in under a minute per pool on a standard workstation with a single RPC endpoint.
+
+An equivalent reproduction without an RPC endpoint is available from the parquet archive of Pool \texttt{Swap} events used by the author's downstream tooling, which holds the top-50 Aerodrome CL pools across epochs 69--140 (December 2024 -- May 2026). Filtering the archive to the target pool and the matching block range reproduces the tick trajectory $\tau(b)$ used above; subsequent steps are unchanged. Running the protocol across non-overlapping 24-hour windows uniformly spaced through the archive's span on the two CL100 pools (24 windows on one pool, 23 on the other) strengthens the comparison from a single-window agreement to a window-averaged distribution. At the minimum-width slice ($w = 200$), empirical $\bar P_{\text{in}}$ exceeds the Gaussian baseline in 87.5\% or more of windows at every $\delta t \geq 1$\,h slice on both pools, with the median empirical-minus-Gaussian gap growing from $+0.02$ at 1\,h to $+0.16$ at 12\,h on the less volatile pool and from $+0.16$ at 1\,h to $+0.24$ at 12\,h on the more volatile pool. The empirical-below-Gaussian outliers concentrate in the highest-volatility windows, where the Brownian model under-predicts dispersion through jump-style increments rather than over-predicting through mean reversion. The cycle regime relevant to Cor.~\ref{cor:short} ($\delta t \leq W = 20$\,s) shows empirical and Gaussian agreement to better than three-decimal precision in every window.
 
 \section{Fork test reproduction}\label{app:forktest}
 

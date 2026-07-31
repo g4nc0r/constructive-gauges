@@ -152,7 +152,7 @@ April 2026 \quad|\quad Companion to \emph{Constructive Gauges}
 \item \textbf{Width}: how many ticks a position spans. Narrow = tight around the current price.
 \item \textbf{Nominal liquidity ($L$)}: the position's raw liquidity number, roughly proportional to capital divided by width.
 \item \textbf{In-range / out-of-range}: whether the current tick lies inside the position's range.
-\item \textbf{Impermanent loss}: the balance-sheet cost to an LP as the price moves through the range (token mix shifts, fees may not cover it).
+\item \textbf{Impermanent loss}: the balance-sheet cost to an LP as the price moves through the range (the position's token mix shifts against the LP). Staked LPs in ve(3,3) forfeit swap fees to voters, so emissions are the only offset.
 \item \textbf{Accumulator}: the gauge's running total of credited rewards per unit of staked liquidity; each LP's claim is the delta since they last snapshotted it.
 \end{itemize}
 \end{intuition}
@@ -161,7 +161,7 @@ April 2026 \quad|\quad Companion to \emph{Constructive Gauges}
 \textbf{Roadmap.}
 \begin{itemize}[leftmargin=2em,nosep]
 \item \textbf{Problem}: current gauges reward nominal presence at the active tick.
-\item \textbf{Fix}: replace raw liquidity $L$ with a four-factor score $L \cdot c \cdot f \cdot \mathbf{1}$.
+\item \textbf{Fix}: scale raw liquidity $L$ by three corrective factors, giving the score $L \cdot c \cdot f \cdot \mathbf{1}$.
 \item \textbf{Result}: parasitic attackers lose most of their reward; normal LPs largely keep theirs.
 \item \textbf{Why all three corrections}: dropping any one of $c$, $f$, or $\mathbf{1}$ reopens exactly one attack.
 \end{itemize}
@@ -179,11 +179,11 @@ That sounds fine, but it treats very different positions as equal:
 \item In naive scoring, a position whose range no longer covers the current tick would earn the same as one actually serving trades. (Most live CL gauges already handle this third gap via their per-position accumulator; the first two are the ones that bite in practice.)
 \end{itemize}
 
-Parasitic extraction exploits these gaps. A deposit-then-withdraw cycle with a tight position at the current tick can harvest emissions without ever bearing impermanent loss or providing real depth. The main paper (Ryan, 2026d) proposes fixes, and this companion walks through why they work.
+Parasitic extraction exploits these gaps. A deposit-then-withdraw cycle with a tight position at the current tick can harvest emissions without ever bearing impermanent loss or providing real depth. The main paper proposes fixes, and this companion walks through why they work.
 
 \section{The corrective scoring function}
 
-The paper replaces ``nominal staked liquidity'' with a product of four factors:
+The paper scales ``nominal staked liquidity'' by three corrective factors:
 
 \begin{result}
 \[
@@ -255,36 +255,38 @@ To talk about who the mechanism helps or hurts, we need a model of how the tick 
 
 Does the corrective scoring function hurt the parasitic LP without hurting the legitimate one?
 
-\section{Attackers get suppressed}
+\section{The parasitic-extraction ratio bound}
 
 \emph{(Main paper, Theorem 1.)}
 
-A short-cycle attacker deposits at the current tick with minimum width $w_{\min}$ and withdraws after $\delta t$ seconds. The paper shows their reward under the new scoring function is bounded:
+A short-cycle attacker deposits at the current tick with minimum width $w_{\min}$ and withdraws after $\delta t$ seconds. The paper bounds the ratio of their reward under the new rule to their reward under the old:
 
 \begin{result}
 \[
-\frac{\text{attacker reward under new rule}}{\text{attacker reward under old rule}} \;\lesssim\; \underbrace{\frac{\bar f(\delta t)}{f_{\text{eq}}}}_{\text{freshness penalty}} \cdot \underbrace{\frac{c(w_{\min})}{c_{\text{ref}}}}_{\text{concentration ratio}}.
+\frac{\text{attacker reward under new rule}}{\text{attacker reward under old rule}} \;\leq\; \underbrace{\frac{\bar f(\delta t)}{f_{\text{eq}}}}_{\text{freshness ratio}} \cdot \underbrace{\frac{c(w_{\min})}{c_{\text{ref}}}}_{\text{concentration ratio}} \;+\; O(1/\sqrt N),
 \]
 \end{result}
 
-Two factors. The first is the \emph{freshness penalty}, measuring how much of the warmup the attacker's position has completed relative to $f_{\text{eq}}$, the freshness a typical legitimate LP runs at in steady state (a population average measured from the calibration dataset in the main paper).
+with the $O(1/\sqrt N)$ term a mean-field error from concentrating the total-score denominator at its expectation across the pool's $N$ LPs.
 
-The second is the \emph{concentration ratio}. The attacker chooses minimum width, so this compares their concentration against $c_{\text{ref}}$, the population-average concentration of in-range legitimate LPs (again from the calibration dataset). In practice the attacker doesn't win much on this axis either, because honest LPs also tend to sit at the concentration cap.
+Two factors. The first is the \emph{freshness ratio}, measuring how much of the warmup the attacker's position has completed relative to $f_{\text{eq}}$, the freshness a typical legitimate LP runs at in steady state (a population average measured from the calibration dataset in the main paper).
+
+The second is the \emph{concentration ratio}. The attacker chooses minimum width, so this compares their concentration against $c_{\text{ref}}$, the population-average concentration of in-range legitimate LPs. The sign and magnitude of $c(w_{\min})/c_{\text{ref}}$ depend on the population's typical width and are not pinned down here; the bound's bite at short cycles comes from the freshness ratio, not the concentration ratio.
 
 \textbf{Why the freshness factor dominates.} At short cycles $\delta t \le W$ (the warmup window), the time-averaged freshness simplifies to $\bar f(\delta t) = \delta t/(2W)$, a small number. Meanwhile a population of LPs rebalancing on the order of minutes has $f_{\text{eq}} \approx 1$. So the ratio is tiny.
 
 \begin{example}
-\textbf{Base WETH/USDC CL100 numbers.} Warmup $W = 20$ seconds, typical legitimate cadence about 6 minutes (from operational data). So $f_{\text{eq}} \approx 0.97$.
+\textbf{Calibrated reference numbers.} Warmup $W = 20$ seconds, dataset-wide median legitimate cadence $\rho_{\text{legit}} \approx 6$ minutes across the 48-pool calibration in the main paper. Then $f_{\text{eq}} = 1 - W/(2\rho_{\text{legit}}) \approx 0.97$.
 
-A parasitic attacker cycling every 2 seconds gets
+A parasitic attacker cycling every 2 seconds (one Base block) gets
 \[
 \bar f(2) = \frac{2}{2 \cdot 20} = 0.05.
 \]
-Plug in with $c(w_{\min})/c_{\text{ref}} \approx 1$:
+Plug into the bound:
 \[
-\frac{\text{new reward}}{\text{old reward}} \;\lesssim\; \frac{0.05}{0.97} \;\approx\; 5.2\%.
+\frac{\text{new reward}}{\text{old reward}} \;\leq\; \frac{0.05}{0.97} \cdot \frac{c(w_{\min})}{c_{\text{ref}}} \;\approx\; 5.2\% \cdot \frac{c(w_{\min})}{c_{\text{ref}}}.
 \]
-A parasitic attacker cycling once per Base block earns at most about $5\%$ of what the current gauge would pay. Combined with the minimum-width floor from Ryan (2026c), short-cycle extraction collapses below $1\%$.
+At the 2-second cycle, the per-block parasitic ratio is bounded by roughly $5\%$ of the standard-gauge baseline times the concentration ratio. The prior Parasitic Liquidity paper, applying the two fixes analytically to fork-measured reward accrual, puts the combined minimum-width plus warmup remediation at about $0.66\%$ of baseline, which is the level the three-factor scoring inherits in this regime.
 \end{example}
 
 \begin{intuition}
@@ -293,28 +295,30 @@ Freshness dominates the short-cycle bound. At $\delta t \to 0$, freshness goes t
 There's a subtler structure inside the bound. Freshness goes \emph{up} as the position ages, while the chance of being in range goes \emph{down} (the tick has more time to wander away). Because these two factors pull in opposite directions over the cycle, their combined contribution is less than naive multiplication would suggest. The main paper's proof makes this precise with a standard inequality for oppositely trending functions.
 \end{intuition}
 
-\section{Normal LPs keep yield}
+\section{The legitimate-LP yield equality}
 
 \emph{(Main paper, Theorem 2.)}
 
-If the new rule just penalised everyone equally, it wouldn't be useful. Theorem 2 says honest LPs at the population-typical profile keep most of their yield:
+If the new rule just penalised everyone equally, it wouldn't be useful. Theorem 2 says the honest LP's yield ratio is, up to mean-field error, exactly the product of a concentration ratio and a freshness ratio weighted by the LP's pointwise in-range probability:
 
 \begin{result}
 \[
-\frac{\text{honest LP reward under new rule}}{\text{honest LP reward under old rule}} \;\gtrsim\; \frac{\bar f(\rho)}{f_{\text{eq}}} \cdot \frac{c(w_{\text{legit}})}{c_{\text{ref}}}.
+\frac{\text{honest LP reward under new rule}}{\text{honest LP reward under old rule}} \;=\; \frac{c(w_{\text{legit}})}{c_{\text{ref}}} \cdot \frac{\tilde f(\rho)}{f_{\text{eq}}} \;+\; O(1/\sqrt N).
 \]
 \end{result}
 
-Same shape as Theorem 1, opposite direction. An honest LP who rebalances at roughly the population-typical cadence $\rho$ and holds roughly the population-typical width lands with both ratios close to 1, so the drag is negligible.
+Same factors as Theorem 1, but here as an equality rather than an upper bound. $\tilde f(\rho)$ is the freshness time-average weighted by the LP's pointwise in-range probability over the rebalance interval. For an LP whose range tracks the tick well (in-range nearly all the time), $\tilde f(\rho) \approx \bar f(\rho)$ and the equality reads against the same $\bar f$ that appears in Theorem 1.
+
+An honest LP who rebalances at roughly the population-typical cadence $\rho_{\text{legit}}$ and holds roughly the population-typical width lands with both ratios close to 1.
 
 \begin{intuition}
-Drag appears only for LPs at the margins. If you rebalance much more often than everyone else, your freshness stays in the ramp-up zone and you earn less per second. If you hold wider than everyone else, you earn less per unit of $L$. The mechanism nudges LPs towards ``whatever most active LPs are doing'', which is precisely the behaviour that provides real depth.
+Theorem 2 is a two-sided statement, not a one-sided bound. An LP with $c(w_{\text{legit}}) > c_{\text{ref}}$ or $\tilde f(\rho) > f_{\text{eq}}$ reads it as a yield premium; one with the inequalities the other way reads it as drag. The mechanism nudges LPs towards ``whatever most active LPs are doing'', which is precisely the behaviour that provides real depth.
 \end{intuition}
 
 \begin{example}
-An honest WETH/USDC LP at the population profile holds width near the cap (so $c(w_{\text{legit}})/c_{\text{ref}} \approx 1$) and rebalances every 6 minutes (so $\bar f(\rho)/f_{\text{eq}} = 1$). New-rule yield matches old-rule yield; drag negligible.
+At the calibrated reference numbers ($W = 20$\,s, $\rho_{\text{legit}} = 368$\,s), an honest LP rebalancing at the dataset-wide median cadence has $\bar f(\rho_{\text{legit}})/f_{\text{eq}} = 1$ by definition. Their drag is then driven entirely by the concentration ratio and the difference between $\tilde f$ and $\bar f$. The main paper computes the bare freshness drag relative to the standard gauge as $W/(2\rho_{\text{legit}}) \approx 2.7\%$ at the median.
 
-An overly active LP rebalancing every 10 seconds has $\bar f(10)/f_{\text{eq}} = 0.25/0.97 \approx 0.26$ and earns about a quarter of what they would have. The mechanism punishes atypical aggression, not legitimate activity.
+An overly active LP rebalancing every 10 seconds has $\bar f(10)/f_{\text{eq}} = 0.25/0.97 \approx 0.26$ and earns roughly a quarter of what they would have. The mechanism punishes atypical aggression, not legitimate activity.
 \end{example}
 
 \section{Why all three terms matter}
@@ -331,16 +335,18 @@ Drop this & Reopens this attack & How to witness \\
 \midrule
 $f$ (freshness) & short-cycle spam & tight position, $\delta t \to 0$ \\
 $\mathbf{1}$ (indicator) & out-of-range accrual & hold after tick drifts out \\
-$c$ (concentration) & width arbitrage & wide position earns same per $L$ \\
+$c$ (concentration)$^\dagger$ & width arbitrage & unbounded $c$ at narrow widths \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{result}
 
+\footnotesize $^\dagger$The $c$ row presumes the cap $c_{\max}$ is dropped alongside $c$. At fixed deployment with both $w_{\min}$ and $c_{\max}$ retained, revenue per unit of capital is already bounded regardless of $c$'s presence, and this row collapses to a family-expressivity claim rather than an attack at fixed parameters.\normalsize
+
 \begin{intuition}
 Each of the three factors plugs a distinct hole, and none of the three is redundant. The mechanism is the minimal fix; you don't get to simplify it.
 
-For existing CL gauges (Slipstream, Uniswap V3, PancakeSwap V3), out-of-range positions already stop accruing because the per-position accumulator is built to skip them. The indicator is still a necessary part of the general scoring family (and of any gauge that doesn't already skip them), but for these mainstream deployments the operationally novel additions are the concentration and freshness terms.
+For the production CL gauges the main paper inspects (Velodrome, Aerodrome Slipstream, Ramses V2, Pharaoh, Shadow, Thena V3.3), out-of-range positions already stop accruing because the per-position accumulator is built to skip them. The indicator is still a necessary part of the general scoring family (and of any gauge that doesn't already skip them), but for these mainstream deployments the operationally novel additions are the concentration and freshness terms.
 \end{intuition}
 
 \begin{result}
@@ -384,7 +390,7 @@ Three layers sit on top of the theorems.
 \begin{itemize}[leftmargin=2em]
 \item \textbf{Tick model validated on-chain.} The assumed log-price random walk is checked against $31{,}912$ live swaps across two Aerodrome CL100 pools. Agreement is tight at short cycles. Long-cycle departures run conservative (reality is slightly more ``in range'' than the model predicts), so the bounds hold.
 \item \textbf{Reference Foundry suite.} A minimal reference implementation of the scoring function runs against live Aerodrome Slipstream on Base mainnet. Each claim maps to a specific test (tight-vs-wide, freshness decay, out-of-range zero, multi-epoch accumulation).
-\item \textbf{Operational calibration.} Parameters ($W$, $c_{\max}$, minimum width) are fixed from an operational dataset of $94{,}469$ rebalance events across $48$ pools over a $38$-day pre-migration window, grounded in observed LP behaviour rather than guesswork.
+\item \textbf{Operational calibration.} Parameters ($W$, $c_{\max}$, minimum width) are fixed from a single-operator dataset of $94{,}469$ rebalance events across $48$ pools over a $38$-day pre-migration window. The dataset sits in the active-management tail of the V3 LP literature, not at the population median; the main paper treats the resulting drag figures as upper bounds for that regime.
 \end{itemize}
 
 \section{What's not in this walkthrough}

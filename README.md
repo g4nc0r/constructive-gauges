@@ -18,9 +18,9 @@ scaling nominal liquidity by a concentration weight non-increasing in range widt
 | **Contact** | [gancor.xyz](https://gancor.xyz) · ORCID [0009-0004-6295-7040](https://orcid.org/0009-0004-6295-7040) |
 | **Paper DOI** | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19690075.svg)](https://doi.org/10.5281/zenodo.19690075) |
 | **SSRN** | [6625980](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6625980) |
-| **Licence** | paper PDFs and LaTeX source © K. R. Ryan, all rights reserved; companion code (when released) MIT |
+| **Licence** | paper PDFs and LaTeX source © K. R. Ryan, all rights reserved; companion code (`foundry/`, `reproduction/`) MIT |
 
-**Status.** *This is a working paper.* The PDFs in `paper/` are revised preprints of the SSRN entry above and are not peer-reviewed. The Foundry verification suite for the constructive scoring function is held back pending a clean release alongside the corresponding Zenodo deposit.
+**Status.** *This is a working paper.* The PDFs in `paper/` are revised preprints of the SSRN entry above and are not peer-reviewed. The Foundry verification suite for the constructive scoring function is included at `foundry/`; the reproduction scripts for the in-range probability validation are at `reproduction/`. The operational calibration dataset (the author's own positions, §6 of the paper) is not distributed.
 
 ## The papers
 
@@ -52,6 +52,7 @@ The Geometric Siphon papers characterise the geometric residual that arises on L
   institution = {SSRN},
   number      = {6625980},
   year        = {2026},
+  doi         = {10.2139/ssrn.6625980},
   url         = {https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6625980}
 }
 ```
@@ -67,6 +68,11 @@ A `CITATION.cff` with the same metadata is included at the repository root.
 │   ├── constructive-gauges.pdf                  compiled PDF
 │   ├── constructive-gauges-walkthrough.tex      walkthrough source
 │   └── constructive-gauges-walkthrough.pdf      compiled walkthrough PDF
+├── foundry/                                     Foundry verification suite (fork tests)
+├── reproduction/
+│   ├── empirical_pin.py                         parquet-archive port of the Appendix E protocol
+│   ├── empirical_pin_multiwindow.py             multi-window extension (Appendix E)
+│   └── output/                                  window-level and aggregate results
 ├── .github/
 │   └── banner.jpg
 ├── CITATION.cff
@@ -74,7 +80,7 @@ A `CITATION.cff` with the same metadata is included at the repository root.
 └── README.md
 ```
 
-Foundry verification code and the operational rebalance dataset will be added in a subsequent revision.
+The operational rebalance dataset used for §6 calibration is the author's own position history and is not distributed; see `reproduction/README.md` for what is and is not reproducible from public data.
 
 ## Building the papers
 
