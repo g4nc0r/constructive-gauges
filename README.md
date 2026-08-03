@@ -18,9 +18,9 @@ scaling nominal liquidity by a concentration weight non-increasing in range widt
 | **Contact** | [gancor.xyz](https://gancor.xyz) · ORCID [0009-0004-6295-7040](https://orcid.org/0009-0004-6295-7040) |
 | **Paper DOI** | [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19690075.svg)](https://doi.org/10.5281/zenodo.19690075) |
 | **SSRN** | [6625980](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6625980) |
-| **Licence** | paper PDFs and LaTeX source © K. R. Ryan, all rights reserved; companion code (`foundry/`, `reproduction/`) MIT |
+| **Licence** | paper PDFs and LaTeX source © K. R. Ryan, all rights reserved; companion code (`foundry/`, `lean/`, `reproduction/`) MIT |
 
-**Status.** *This is a working paper.* The PDFs in `paper/` are revised preprints of the SSRN entry above and are not peer-reviewed. The Foundry verification suite for the constructive scoring function is included at `foundry/`; the reproduction scripts for the in-range probability validation are at `reproduction/`. The operational calibration dataset (the author's own positions, §6 of the paper) is not distributed.
+**Status.** *This is a working paper.* The PDFs in `paper/` are revised preprints of the SSRN entry above and are not peer-reviewed. The Foundry verification suite for the constructive scoring function is included at `foundry/`; the reproduction scripts for the in-range probability validation are at `reproduction/`; a Lean 4 formalisation of the theorem layer is at `lean/`. The operational calibration dataset (the author's own positions, §6 of the paper) is not distributed.
 
 ## The papers
 
@@ -69,6 +69,10 @@ A `CITATION.cff` with the same metadata is included at the repository root.
 │   ├── constructive-gauges-walkthrough.tex      walkthrough source
 │   └── constructive-gauges-walkthrough.pdf      compiled walkthrough PDF
 ├── foundry/                                     Foundry verification suite (fork tests)
+├── lean/                                        Lean 4 formalisation of the theorem layer
+│   ├── ConstructiveGauges/                      Defs.lean + eight theorem files
+│   ├── AxiomCheck.lean                          45 axiom checks
+│   └── README.md                                coverage map and scope caveats
 ├── reproduction/
 │   ├── empirical_pin.py                         parquet-archive port of the Appendix E protocol
 │   ├── empirical_pin_multiwindow.py             multi-window extension (Appendix E)
@@ -81,6 +85,21 @@ A `CITATION.cff` with the same metadata is included at the repository root.
 ```
 
 The operational rebalance dataset used for §6 calibration is the author's own position history and is not distributed; see `reproduction/README.md` for what is and is not reproducible from public data.
+
+## Lean formalisation
+
+[`lean/`](./lean/) machine-checks the theorem layer in Lean 4 against mathlib. Coverage is Lemma 1's pointwise in-range law together with the two monotonicity conditions the Chebyshev step consumes; Lemma 2 as an explicit finite-$N$ concentration bound rather than an asymptotic statement; Theorems 1 and 2 in full on the mean-field reduced revenue functionals, exactly and with no error term; Corollaries 1 and 2 as limits of the closed-form freshness average, and Corollary 3 with both envelopes of the range-tracking bracket; Theorem 3's short-cycle and out-of-range rows as iffs, with the width arbitrage row sharpened; and Propositions 1 and 2 in full. Chebyshev's anti-monotone inequality is proved here in integral form, mathlib carrying only the finite-sum version.
+
+The mean-field substitution itself is not carried through symbolically: it is taken as the definition of the reduced functionals, which makes Theorems 1 and 2 exact and confines the $O(N^{-1/2})$ bookkeeping to the concentration lemma. Lemma 2's positive-dependence variant, the Brownian price process as a process, and the empirical layer are also outside scope. The full coverage map, the sharpened reading of Theorem 3's width arbitrage row, and the scope caveats are in [`lean/README.md`](./lean/README.md). The formalisation covers the idealised real-arithmetic and mean-field model of the paper; the Foundry suite remains the check against the accumulator's actual arithmetic on live chain state, and `reproduction/` remains the check of Lemma 1's Gaussian model against realised tick paths.
+
+```bash
+cd lean
+lake exe cache get   # one-off, fetches prebuilt mathlib (several GB)
+lake build
+
+# axiom audit: 45 checks, propext / Classical.choice / Quot.sound only, no sorry
+lake env lean AxiomCheck.lean
+```
 
 ## Building the papers
 
